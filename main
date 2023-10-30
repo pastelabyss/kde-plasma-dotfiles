@@ -1,0 +1,150 @@
+import os
+import sys
+import subprocess
+
+def is_debian_linux():
+    try:
+        # Use lsb_release command to get distribution information
+        output = os.popen('lsb_release -i').read()
+        return 'Debian' in output
+    except FileNotFoundError:
+        return False
+
+def move_config_files():
+    os.system('mv config /home/$USER/.config')
+    print("Moved config files to .config")
+
+def create_branding_directory_and_move_files():
+    os.system('mkdir -p /home/$USER/.local/share/branding')
+    os.system('mv branding /home/$USER/.local/share/branding')
+    print("Created .local/share/branding/ and moved branding files.")
+
+def enable_i386_architecture():
+    os.system('sudo dpkg --add-architecture i386')
+    print("Enabled 'i386' architecture.")
+
+def modify_sources_list():
+    # Replace 'bookworm' with 'testing' in /etc/apt/sources.list
+    os.system("sudo sed -i -e 's/bookworm/testing/g' /etc/apt/sources.list")
+
+    # Replace 'bookworm-security' with 'testing-security'
+    os.system("sudo sed -i -e 's/bookworm-security/testing-security/g' /etc/apt/sources.list")
+
+    # Replace 'bookworm-updates' with 'testing-updates'
+    os.system("sudo sed -i -e 's/bookworm-updates/testing-updates/g' /etc/apt/sources.list")
+
+    # Replace 'main non-free-firmware' with 'main non-free-firmware contrib non-free'
+    os.system("sudo sed -i -e 's/main non-free-firmware/main non-free-firmware contrib non-free/' /etc/apt/sources.list")
+
+    print("Modified /etc/apt/sources.list file.")
+
+def install_apt_packages(package_names):
+    os.system('sudo apt update')
+    os.system('sudo apt -y dist-upgrade')
+    for package_name in package_names:
+        os.system(f'sudo apt install -y {package_name}')
+        print(f"Successfully installed {package_name}.")
+
+def ask_install_nvidia_drivers():
+    while True:
+        choice = input("Do you want to install Nvidia drivers? (yes/no): ").lower()
+        if choice in ["yes", "y"]:
+            os.system('sudo apt install -y nvidia-driver')
+            print("Nvidia drivers installed.")
+            break
+        elif choice in ["no", "n"]:
+            print("Nvidia drivers will not be installed.")
+            break
+        else:
+            print("Please enter 'yes'/'y' or 'no'/'n'.")
+
+def change_network_manager_config():
+    os.system('sudo sed -i -e "s/managed=false/managed=true/" /etc/NetworkManager/NetworkManager.conf')
+    print("Changed NetworkManager configuration to managed=true.")
+
+def comment_out_network_interfaces():
+    os.system('sudo sed -i -e "s/^/#/" /etc/network/interfaces')
+    print("Commented out everything in /etc/network/interfaces.")
+
+
+def enable_systemd_services():
+    try:
+        os.system('sudo systemctl enable sddm bluetooth NetworkManager')
+        print("Enabled systemd services for SDDM, Bluetooth, and NetworkManager.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error enabling systemd services: {e}")
+
+def enable_flatpak_and_install_chromium():
+    try:
+        # Add the Flathub remote and install Chromium
+        os.system('sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo')
+        os.system('sudo flatpak install -y --noninteractive flathub org.chromium.Chromium')
+        print("Enabled Flathub and installed Chromium via Flatpak.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error enabling Flatpak and installing Chromium: {e}")
+
+def update_xdg_user_dirs():
+    try:
+        subprocess.check_call(['xdg-user-dirs-update'])
+        print("Updated XDG user directories.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error updating XDG user directories: {e}")
+
+def clear_screen():
+    os.system('clear')  # On Linux
+
+def prompt_reboot():
+    response = input("Reboot now? (yes/no): ").strip().lower()
+    return response in ('y', 'yes')
+
+if __name__ == "__main__":
+    if is_debian_linux():
+        
+        # Update XDG user directories
+        update_xdg_user_dirs()
+        
+        # Move config files
+        move_config_files()
+
+        # Create branding directory and move files
+        create_branding_directory_and_move_files()
+
+        # enable 'i386' architecture
+        enable_i386_architecture()
+
+        # Modify sources.list
+        modify_sources_list()
+
+        # install packages & upgrade to testing
+        packages_to_install = ["mousepad plasma-discover-backend-flatpak flatpak materia-kde materia-gtk-theme kde-plasma-desktop plasma-nm okular gwenview kde-spectacle ark xdg-user-dirs qt5-style-kvantum xorg plasma-workspace-wayland mpv build-essential git p7zip papirus-icon-theme"]
+        install_apt_packages(packages_to_install)
+
+        # Clear the screen
+        clear_screen()
+
+        # Ask the user if they want to install Nvidia drivers
+        ask_install_nvidia_drivers()
+
+        # Enable systemd services
+        enable_systemd_services()
+
+        # Enable Flatpak and install Chromium
+        enable_flatpak_and_install_chromium()
+
+        # Change NetworkManager configuration
+        change_network_manager_config()
+        
+        # Comment out network interfaces
+        comment_out_network_interfaces()
+
+        # Clear the screen
+        clear_screen()
+        
+        # Prompt the user to reboot
+        if prompt_reboot():
+            print("Rebooting...")
+            os.system('sudo reboot')
+        else:
+            print("No reboot requested.")
+    else:
+        print("This script is intended for Debian Linux.")
